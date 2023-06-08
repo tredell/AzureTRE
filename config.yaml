@@ -1,13 +1,13 @@
 ---
 # After you have replaced all the __CHANGE_ME__ values in this file, you need to
 # run `make auth` to setup the Auth.
-tre_id: muppettre
+tre_id: healthtre
 location: canadacentral
 management:
-  mgmt_resource_group_name: tremgmt
-  mgmt_storage_account_name: adlsmuppetstre
+  mgmt_resource_group_name: healthtremgmt
+  mgmt_storage_account_name: healthtreadls
   terraform_state_container_name: tfstate
-  acr_name: muppetstre
+  acr_name: healthtre
   # Azure Resource Manager credentials used for CI/CD pipelines
   arm_subscription_id: 83883d23-ca29-4c85-95ba-6dd30c0252b6
 
@@ -38,6 +38,9 @@ tre:
   # The TRE Web UI is deployed by default.
   # Uncomment the following to disable deployment of the Web UI.
   # deploy_ui: false
+  # If you want to use TRE_URL to point to your local TRE API instance or be configured to another cloud provider
+  # uncomment and set this variable
+  # tre_url: __CHANGE_ME__
 
 authentication:
   aad_tenant_id: 586153d5-0630-4e6c-b44a-2dfeca488db7
@@ -59,15 +62,12 @@ resource_processor:
 # to use as a source of bundle parameter values
 # For example, to specify your image_gallery_id for use in VM user resources with custom VM images:
 # yamllint disable-line rule:line-length
-#   rp_bundle_values: {"image_gallery_id":"/subscriptions/<subscription-id>/resourceGroups/<your-rg>/providers/Microsoft.Compute/galleries/<your-gallery-name>"}
+#  rp_bundle_values: '{"custom_key_1":"custom_value_1","image_gallery_id":"/subscriptions/<subscription-id>/resourceGroups/<your-rg>/providers/Microsoft.Compute/galleries/<your-gallery-name>"}'
 
 developer_settings:
   # Locks will not be added to stateful resources so they can be easily removed
   # stateful_resources_locked: false
 
-# If you want to use TRE_URL to point to your local TRE API instance,
-# uncomment and set this variable
-#   tre_url: __CHANGE_ME__
 
 # This setting will enable your local machine to be able to
 # communicate with Service Bus and Cosmos. It will also allow deploying
