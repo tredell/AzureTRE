@@ -1,15 +1,15 @@
 ---
 # After you have replaced all the __CHANGE_ME__ values in this file, you need to
 # run `make auth` to setup the Auth.
-tre_id: govbitre
+tre_id: muppettre
 location: canadacentral
 management:
-  mgmt_resource_group_name: rg-govbi=tre
-  mgmt_storage_account_name: adlsgovbitre
+  mgmt_resource_group_name: tremgmt
+  mgmt_storage_account_name: adlsmuppetstre
   terraform_state_container_name: tfstate
-  acr_name: acrgovbitre
+  acr_name: muppetstre
   # Azure Resource Manager credentials used for CI/CD pipelines
-  arm_subscription_id: 5896c457-3bb5-487b-bfd9-a0dc6cdde896
+  arm_subscription_id: 83883d23-ca29-4c85-95ba-6dd30c0252b6
 
   # If you want to override the currently signed in credentials
   # You would do this if running commands like `make terraform-install DIR=./templates/workspaces/base`
@@ -40,7 +40,7 @@ tre:
   # deploy_ui: false
 
 authentication:
-  aad_tenant_id: a4f001a2-3159-4527-9d9f-3e5c4a0795ae
+  aad_tenant_id: 586153d5-0630-4e6c-b44a-2dfeca488db7
   # Setting AUTO_WORKSPACE_APP_REGISTRATION to false will:
   # create an identity with `Application.ReadWrite.OwnedBy`.
   # Setting AUTO_WORKSPACE_APP_REGISTRATION to true will:
