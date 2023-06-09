@@ -1,13 +1,13 @@
 ---
 # After you have replaced all the __CHANGE_ME__ values in this file, you need to
 # run `make auth` to setup the Auth.
-tre_id: bchealthtre
+tre_id: btwbchtre
 location: canadacentral
 management:
-  mgmt_resource_group_name: bchealthtremgmt
-  mgmt_storage_account_name: bchealthtreadls
+  mgmt_resource_group_name: btwbchtremgmt
+  mgmt_storage_account_name: btwbchtreadls
   terraform_state_container_name: tfstate
-  acr_name: bchealthtre
+  acr_name: btwbchtre
   # Azure Resource Manager credentials used for CI/CD pipelines
   arm_subscription_id: 83883d23-ca29-4c85-95ba-6dd30c0252b6
 
