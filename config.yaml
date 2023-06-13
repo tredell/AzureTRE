@@ -1,13 +1,13 @@
 ---
 # After you have replaced all the __CHANGE_ME__ values in this file, you need to
 # run `make auth` to setup the Auth.
-tre_id: btwtrebch
+tre_id: btwtre
 location: canadacentral
 management:
-  mgmt_resource_group_name: btwtrebchmgmt
-  mgmt_storage_account_name: btwtrebchadls
+  mgmt_resource_group_name: rg-btwtremgmt
+  mgmt_storage_account_name: btwtreadls
   terraform_state_container_name: tfstate
-  acr_name: btwtrebch
+  acr_name: btwtrehealthacr
   # Azure Resource Manager credentials used for CI/CD pipelines
   arm_subscription_id: 83883d23-ca29-4c85-95ba-6dd30c0252b6
 
@@ -52,7 +52,7 @@ authentication:
   # When this is false, the AAD Application will need creating manually.
   auto_workspace_app_registration: true
   # Setting AUTO_WORKSPACE_GROUP_CREATION to true will create an identity with `Group.ReadWrite.All`
-  auto_workspace_group_creation: false
+  auto_workspace_group_creation: true
 
 resource_processor:
   # The number of processes to start in the resource processor VMSS image
