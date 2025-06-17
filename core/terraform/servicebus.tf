@@ -1,10 +1,51 @@
 resource "azurerm_servicebus_namespace" "sb" {
-  name                = "sb-${var.tre_id}"
-  location            = azurerm_resource_group.core.location
-  resource_group_name = azurerm_resource_group.core.name
-  sku                 = "Premium"
-  capacity            = "1"
-  tags                = local.tre_core_tags
+  name                         = "sb-${var.tre_id}"
+  location                     = azurerm_resource_group.core.location
+  resource_group_name          = azurerm_resource_group.core.name
+  sku                          = "Premium"
+  premium_messaging_partitions = "1"
+  capacity                     = "1"
+  local_auth_enabled           = false
+  tags                         = local.tre_core_tags
+
+  # Block public access
+  # See https://docs.microsoft.com/azure/service-bus-messaging/service-bus-service-endpoints
+  network_rule_set {
+    ip_rules = var.enable_local_debugging ? [local.myip] : null
+
+    # Allows the Eventgrid to access the SB
+    trusted_services_allowed = true
+
+    # We must enable the Airlock events subnet to access the SB, as the Eventgrid topics can't send messages over PE
+    # https://docs.microsoft.com/en-us/azure/event-grid/consume-private-endpoints
+    default_action                = "Deny"
+    public_network_access_enabled = true
+    network_rules {
+      subnet_id                            = module.network.airlock_events_subnet_id
+      ignore_missing_vnet_service_endpoint = false
+    }
+    network_rules {
+      subnet_id                            = module.network.airlock_notification_subnet_id
+      ignore_missing_vnet_service_endpoint = false
+    }
+  }
+
+  dynamic "customer_managed_key" {
+    for_each = var.enable_cmk_encryption ? [1] : []
+    content {
+      key_vault_key_id                  = azurerm_key_vault_key.tre_encryption[0].id
+      identity_id                       = azurerm_user_assigned_identity.encryption[0].id
+      infrastructure_encryption_enabled = true
+    }
+  }
+
+  dynamic "identity" {
+    for_each = var.enable_cmk_encryption ? [1] : []
+    content {
+      type         = "UserAssigned"
+      identity_ids = [azurerm_user_assigned_identity.encryption[0].id]
+    }
+  }
 
   lifecycle { ignore_changes = [tags] }
 }
@@ -13,8 +54,8 @@ resource "azurerm_servicebus_queue" "workspacequeue" {
   name         = "workspacequeue"
   namespace_id = azurerm_servicebus_namespace.sb.id
 
-  enable_partitioning = false
-  requires_session    = true # use sessions here to make sure updates to each resource happen in serial, in order
+  partitioning_enabled = false
+  requires_session     = true # use sessions here to make sure updates to each resource happen in serial, in order
 }
 
 resource "azurerm_servicebus_queue" "service_bus_deployment_status_update_queue" {
@@ -25,8 +66,8 @@ resource "azurerm_servicebus_queue" "service_bus_deployment_status_update_queue"
   # Cosmos is the final destination of the messages where 2048 is the limit.
   max_message_size_in_kilobytes = 2048 # default=1024
 
-  enable_partitioning = false
-  requires_session    = true
+  partitioning_enabled = false
+  requires_session     = true
 }
 
 resource "azurerm_private_dns_zone" "servicebus" {
@@ -66,29 +107,10 @@ resource "azurerm_private_endpoint" "sbpe" {
     is_manual_connection           = false
     subresource_names              = ["namespace"]
   }
-}
 
-# Block public access
-# See https://docs.microsoft.com/azure/service-bus-messaging/service-bus-service-endpoints
-resource "azurerm_servicebus_namespace_network_rule_set" "servicebus_network_rule_set" {
-  namespace_id = azurerm_servicebus_namespace.sb.id
-  ip_rules     = var.enable_local_debugging ? [local.myip] : null
-
-
-  # We must enable the Airlock events subnet to access the SB, as the Eventgrid topics can't send messages over PE
-  # https://docs.microsoft.com/en-us/azure/event-grid/consume-private-endpoints
-  default_action                = "Deny"
-  public_network_access_enabled = true
-  network_rules {
-    subnet_id                            = module.network.airlock_events_subnet_id
-    ignore_missing_vnet_service_endpoint = false
-  }
-
-  # Allows the Eventgrid to access the SB
-  trusted_services_allowed = true
-
+  # private endpoints in serial
   depends_on = [
-    module.network
+    azurerm_private_endpoint.filepe
   ]
 }
 
@@ -101,22 +123,12 @@ resource "azurerm_monitor_diagnostic_setting" "sb" {
     for_each = setintersection(data.azurerm_monitor_diagnostic_categories.sb.log_category_types, local.servicebus_diagnostic_categories_enabled)
     content {
       category = enabled_log.value
-
-      retention_policy {
-        enabled = true
-        days    = 365
-      }
     }
   }
 
   metric {
     category = "AllMetrics"
     enabled  = true
-
-    retention_policy {
-      enabled = true
-      days    = 365
-    }
   }
 
   lifecycle { ignore_changes = [log_analytics_destination_type] }

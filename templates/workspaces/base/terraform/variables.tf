@@ -53,6 +53,11 @@ variable "create_aad_groups" {
   description = "Create AAD groups automatically for the Workspace Application Roles."
 }
 
+variable "core_api_client_id" {
+  type        = string
+  description = "The client id of the core API application."
+}
+
 variable "enable_airlock" {
   type        = bool
   description = "Controls the deployment of Airlock resources in the workspace."
@@ -103,6 +108,9 @@ variable "client_secret" {
   default     = ""
   description = "The client secret of the workspace in the identity provider, this is passed in so that we may return it as an output."
 }
+variable "ui_client_id" {
+  type = string
+}
 variable "sp_id" {
   type        = string
   default     = ""
@@ -119,4 +127,46 @@ variable "workspace_owner_object_id" {
   description = "The Object Id of the user that you wish to be the Workspace Owner. E.g. the TEST_AUTOMATION_ACCOUNT."
 }
 
-variable "arm_environment" {}
+variable "arm_environment" {
+  type = string
+}
+
+variable "enable_cmk_encryption" {
+  type        = bool
+  default     = false
+  description = "Enable CMK encryption for the workspace"
+}
+
+variable "key_store_id" {
+  type        = string
+  description = "ID of the Key Vault to store CMKs in (only used if enable_cmk_encryption is true)"
+}
+
+variable "storage_account_redundancy" {
+  type        = string
+  default     = "GRS"
+  description = "The redundancy option for the storage account in the workspace: GRS (Geo-Redundant Storage) or ZRS (Zone-Redundant Storage)."
+}
+variable "auto_grant_workspace_consent" {
+  type        = bool
+  default     = false
+  description = "A boolean indicating if the admin consent should be auto granted to the workspace"
+}
+
+variable "enable_dns_policy" {
+  type        = bool
+  description = "Whether, or not, to add a DNS security policy with an allow-list. This is a preview feature that can be enabled to prevent data exfiltration via DNS."
+  default     = false
+}
+
+variable "enable_airlock_malware_scanning" {
+  type        = bool
+  default     = false
+  description = "Enable Airlock malware scanning for the workspace"
+}
+
+variable "airlock_malware_scan_result_topic_name" {
+  type        = string
+  description = "The name of the topic to publish scan results to"
+  default     = null
+}

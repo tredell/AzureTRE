@@ -13,21 +13,47 @@ resource "azurerm_log_analytics_workspace" "workspace" {
 # Storage account for Application Insights
 # Because Private Link is enabled on Application Performance Management (APM), Bring Your Own Storage (BYOS) approach is required
 resource "azurerm_storage_account" "app_insights" {
-  name                            = lower(replace("stai${var.tre_id}ws${local.short_workspace_id}", "-", ""))
-  resource_group_name             = var.resource_group_name
-  location                        = var.location
-  account_kind                    = "StorageV2"
-  account_tier                    = "Standard"
-  account_replication_type        = "LRS"
-  allow_nested_items_to_be_public = false
-  tags                            = var.tre_workspace_tags
+  name                             = lower(replace("stai${var.tre_id}ws${local.short_workspace_id}", "-", ""))
+  resource_group_name              = var.resource_group_name
+  location                         = var.location
+  account_kind                     = "StorageV2"
+  account_tier                     = "Standard"
+  account_replication_type         = "LRS"
+  table_encryption_key_type        = var.enable_cmk_encryption ? "Account" : "Service"
+  queue_encryption_key_type        = var.enable_cmk_encryption ? "Account" : "Service"
+  allow_nested_items_to_be_public  = false
+  cross_tenant_replication_enabled = false
+  local_user_enabled               = false
+  tags                             = var.tre_workspace_tags
+
+  # unclear the implications on az-monitor, so leaving it for now.
+  # shared_access_key_enabled        = false
+
+  dynamic "identity" {
+    for_each = var.enable_cmk_encryption ? [1] : []
+    content {
+      type         = "UserAssigned"
+      identity_ids = [var.encryption_identity_id]
+    }
+  }
+
+  dynamic "customer_managed_key" {
+    for_each = var.enable_cmk_encryption ? [1] : []
+    content {
+      key_vault_key_id          = var.encryption_key_versionless_id
+      user_assigned_identity_id = var.encryption_identity_id
+    }
+  }
+
+  # changing this value is destructive, hence attribute is in lifecycle.ignore_changes block below
+  infrastructure_encryption_enabled = true
 
   network_rules {
     default_action = "Deny"
     bypass         = ["AzureServices"]
   }
 
-  lifecycle { ignore_changes = [tags] }
+  lifecycle { ignore_changes = [infrastructure_encryption_enabled, tags] }
 }
 
 resource "azurerm_log_analytics_linked_storage_account" "workspace_storage_ingestion" {
@@ -44,10 +70,35 @@ resource "azurerm_log_analytics_linked_storage_account" "workspace_storage_custo
   storage_account_ids   = [azurerm_storage_account.app_insights.id]
 }
 
-resource "azurerm_monitor_private_link_scope" "workspace" {
-  name                = "ampls-${var.tre_id}-ws-${local.short_workspace_id}"
-  resource_group_name = var.resource_group_name
-  tags                = var.tre_workspace_tags
+# TODO: Switch to azurerm once the followiung issue is resolved: https://github.com/microsoft/AzureTRE/issues/3625
+# resource "azurerm_monitor_private_link_scope" "workspace" {
+#   name                = "ampls-${var.tre_id}-ws-${local.short_workspace_id}"
+#   resource_group_name = var.resource_group_name
+#   tags                = var.tre_workspace_tags
+
+#   lifecycle { ignore_changes = [tags] }
+# }
+
+resource "azapi_resource" "ampls_workspace" {
+  type      = "microsoft.insights/privateLinkScopes@2021-07-01-preview"
+  name      = "ampls-${var.tre_id}-ws-${local.short_workspace_id}"
+  parent_id = var.resource_group_id
+  location  = "global"
+  tags      = var.tre_workspace_tags
+
+  body = {
+    properties = {
+      accessModeSettings = {
+        ingestionAccessMode = "PrivateOnly"
+        queryAccessMode     = "PrivateOnly"
+      }
+    }
+  }
+
+  response_export_values = [
+    "id"
+  ]
+
 
   lifecycle { ignore_changes = [tags] }
 }
@@ -55,7 +106,7 @@ resource "azurerm_monitor_private_link_scope" "workspace" {
 resource "azurerm_monitor_private_link_scoped_service" "ampls_log_anaytics" {
   name                = "ampls-log-anaytics-service"
   resource_group_name = var.resource_group_name
-  scope_name          = azurerm_monitor_private_link_scope.workspace.name
+  scope_name          = azapi_resource.ampls_workspace.name
   linked_resource_id  = azurerm_log_analytics_workspace.workspace.id
 }
 
@@ -84,7 +135,7 @@ resource "azapi_resource" "appinsights" {
   location  = var.location
   tags      = var.tre_workspace_tags
 
-  body = jsonencode({
+  body = {
     kind = "web"
     properties = {
       Application_Type                = "web"
@@ -95,21 +146,22 @@ resource "azapi_resource" "appinsights" {
       ForceCustomerStorageForProfiler = true
       publicNetworkAccessForIngestion = var.enable_local_debugging ? "Enabled" : "Disabled"
     }
-  })
+  }
 
   response_export_values = [
     "id",
     "properties.ConnectionString",
   ]
+
+  lifecycle { ignore_changes = [tags] }
 }
 
 resource "azurerm_monitor_private_link_scoped_service" "ampls_app_insights" {
   name                = "ampls-app-insights-service"
   resource_group_name = var.resource_group_name
-  scope_name          = azurerm_monitor_private_link_scope.workspace.name
+  scope_name          = azapi_resource.ampls_workspace.name
 
-  # linked_resource_id  = azurerm_application_insights.workspace.id
-  linked_resource_id = jsondecode(azapi_resource.appinsights.output).id
+  linked_resource_id = azapi_resource.appinsights.id
 }
 
 resource "azurerm_private_endpoint" "azure_monitor_private_endpoint" {
@@ -122,7 +174,7 @@ resource "azurerm_private_endpoint" "azure_monitor_private_endpoint" {
   lifecycle { ignore_changes = [tags] }
 
   private_service_connection {
-    private_connection_resource_id = azurerm_monitor_private_link_scope.workspace.id
+    private_connection_resource_id = azapi_resource.ampls_workspace.output.id
     name                           = "psc-ampls-${var.tre_id}-ws-${local.short_workspace_id}"
     subresource_names              = ["azuremonitor"]
     is_manual_connection           = false
@@ -167,8 +219,7 @@ resource "azurerm_monitor_smart_detector_alert_rule" "failure_anomalies" {
   resource_group_name = var.resource_group_name
   severity            = "Sev3"
   scope_resource_ids = [
-    # azurerm_application_insights.workspace.id
-    jsondecode(azapi_resource.appinsights.output).id
+    azapi_resource.appinsights.id
   ]
   frequency     = "PT1M"
   detector_type = "FailureAnomaliesDetector"

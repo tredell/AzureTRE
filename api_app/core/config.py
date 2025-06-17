@@ -1,13 +1,16 @@
 from typing import List
+import warnings
 from starlette.config import Config
 from _version import __version__
 
-config = Config(".env")
+warnings.filterwarnings("ignore", message="Config file '.env' not found.")
+
+config = Config('.env')
 
 # API settings
 API_PREFIX = "/api"
 PROJECT_NAME: str = config("PROJECT_NAME", default="Azure TRE API")
-DEBUG: bool = config("DEBUG", cast=bool, default=False)
+LOGGING_LEVEL: str = config("LOGGING_LEVEL", default="INFO")
 ENABLE_LOCAL_DEBUGGING: bool = config("ENABLE_LOCAL_DEBUGGING", cast=bool, default=False)
 ENABLE_SWAGGER: bool = config("ENABLE_SWAGGER", cast=bool, default=False)
 VERSION = __version__
@@ -33,7 +36,6 @@ STATE_STORE_AIRLOCK_REQUESTS_CONTAINER = "Requests"
 SUBSCRIPTION_ID: str = config("SUBSCRIPTION_ID", default="")
 RESOURCE_GROUP_NAME: str = config("RESOURCE_GROUP_NAME", default="")
 
-
 # Service bus configuration
 SERVICE_BUS_FULLY_QUALIFIED_NAMESPACE: str = config("SERVICE_BUS_FULLY_QUALIFIED_NAMESPACE", default="")
 SERVICE_BUS_RESOURCE_REQUEST_QUEUE: str = config("SERVICE_BUS_RESOURCE_REQUEST_QUEUE", default="")
@@ -54,6 +56,9 @@ CREDENTIAL_SCOPES: List[str] = [f"{RESOURCE_MANAGER_ENDPOINT}/.default"]
 MICROSOFT_GRAPH_URL: str = config("MICROSOFT_GRAPH_URL", default="https://graph.microsoft.com")
 STORAGE_ENDPOINT_SUFFIX: str = config("STORAGE_ENDPOINT_SUFFIX", default="core.windows.net")
 
+# Monitoring
+APPLICATIONINSIGHTS_CONNECTION_STRING: str = config("APPLICATIONINSIGHTS_CONNECTION_STRING", default=None)
+
 # Authentication
 API_CLIENT_ID: str = config("API_CLIENT_ID", default="")
 API_CLIENT_SECRET: str = config("API_CLIENT_SECRET", default="")
@@ -63,5 +68,9 @@ AAD_TENANT_ID: str = config("AAD_TENANT_ID", default="")
 API_AUDIENCE: str = config("API_AUDIENCE", default=API_CLIENT_ID)
 
 AIRLOCK_SAS_TOKEN_EXPIRY_PERIOD_IN_HOURS: int = config("AIRLOCK_SAS_TOKEN_EXPIRY_PERIOD_IN_HOURS", default=1)
+ENABLE_AIRLOCK_EMAIL_CHECK: bool = config("ENABLE_AIRLOCK_EMAIL_CHECK", cast=bool, default=False)
 
 API_ROOT_SCOPE: str = f"api://{API_CLIENT_ID}/user_impersonation"
+
+# User Management
+USER_MANAGEMENT_ENABLED: bool = config("USER_MANAGEMENT_ENABLED", cast=bool, default=False)

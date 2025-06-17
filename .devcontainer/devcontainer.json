@@ -1,5 +1,11 @@
 {
   "name": "AzureTRE",
+  // Uncomment when debugging using Jetbrains
+  // "features": {
+  //   "ghcr.io/devcontainers/features/sshd:1": {
+  //       "version": "latest"
+  //   }
+  // },
   "build": {
     "context": "..",
     "dockerfile": "Dockerfile",
@@ -23,7 +29,7 @@
     // Mount docker socket for docker builds
     "type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock",
     // Mounts the github cli login details from the host machine to the container (~/.config/gh/hosts.yml)
-    "type=bind,source=${env:HOME}${env:USERPROFILE}/.config,target=/home/vscode/.config",
+    "type=bind,source=${env:HOME}${env:USERPROFILE}/.config,target=/home/vscode/.config"
   ],
   "remoteUser": "vscode",
   "containerEnv": {
@@ -38,25 +44,20 @@
       // Set *default* container specific settings.json values on container create.
       "settings": {
         "terminal.integrated.defaultProfile.linux": "bash",
+        "editor.formatOnPaste": true,
+        "editor.formatOnSave": true,
         "python.pythonPath": "/usr/local/bin/python",
-        "python.linting.enabled": true,
-        "python.linting.pylintEnabled": false,
-        "python.linting.flake8Enabled": true,
         "python.formatting.provider": "black",
         "python.formatting.autopep8Path": "/usr/local/py-utils/bin/autopep8",
         "python.formatting.blackPath": "/usr/local/py-utils/bin/black",
         "python.formatting.yapfPath": "/usr/local/py-utils/bin/yapf",
-        "python.linting.banditPath": "/usr/local/py-utils/bin/bandit",
-        "python.linting.flake8Path": "/usr/local/py-utils/bin/flake8",
-        "python.linting.mypyPath": "/usr/local/py-utils/bin/mypy",
-        "python.linting.pycodestylePath": "/usr/local/py-utils/bin/pycodestyle",
-        "python.linting.pydocstylePath": "/usr/local/py-utils/bin/pydocstyle",
-        "python.linting.pylintPath": "/usr/local/py-utils/bin/pylint",
         "python.testing.unittestEnabled": false,
         "python.testing.pytestEnabled": true,
         "python.testing.pytestArgs": [
-          "api_app"
+          "--ignore=e2e_tests",
+          "-W ignore::DeprecationWarning"
         ],
+        "python.testing.cwd": "${workspaceFolder}",
         "files.associations": {
           "*.terraform": "terraform"
         },
@@ -79,7 +80,11 @@
               "justMyCode": false,
               "console": "integratedTerminal",
               "preLaunchTask": "Copy_env_file_for_api_debug",
-              "cwd": "${workspaceFolder}/api_app"
+              "cwd": "${workspaceFolder}/api_app",
+              "envFile": "${workspaceFolder}/api_app/.env",
+              "env": {
+                "OTEL_RESOURCE_ATTRIBUTES": "service.name=api,service.instance.id=local_debug,service.version=dev"
+              }
             },
             {
               "name": "E2E Extended",
@@ -181,8 +186,10 @@
               "cwd": "${workspaceFolder}/resource_processor",
               "envFile": "${workspaceFolder}/core/private.env",
               "env": {
-                "PYTHONPATH": "."
-              }
+                "PYTHONPATH": ".",
+                "OTEL_RESOURCE_ATTRIBUTES": "service.name=resource_processor,service.instance.id=local_debug,service.version=dev"
+              },
+              "justMyCode": false
             },
             {
               "name": "Debug Python file",
@@ -261,8 +268,12 @@
       "extensions": [
         "ms-python.python",
         "ms-python.pylance",
+        "ms-python.flake8",
+        "nwgh.bandit",
         "hashicorp.terraform",
         "github.vscode-pull-request-github",
+        "gitHub.copilot",
+        "github.copilot-chat",
         "getporter.porter-vscode",
         "davidanson.vscode-markdownlint",
         "editorconfig.editorconfig",
@@ -277,5 +288,8 @@
     8000
   ],
   // Run commands after the container is created.
-  "postCreateCommand": "./.devcontainer/scripts/post-create.sh"
+  "postCreateCommand": "./.devcontainer/scripts/post-create.sh",
+  "initializeCommand": [
+    "./.devcontainer/scripts/initialize"
+  ]
 }

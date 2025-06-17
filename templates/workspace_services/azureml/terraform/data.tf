@@ -7,18 +7,13 @@ data "azurerm_virtual_network" "ws" {
   resource_group_name = data.azurerm_resource_group.ws.name
 }
 
-resource "azurerm_application_insights" "ai" {
-  name                = "ai-${local.service_resource_name_suffix}"
-  location            = data.azurerm_resource_group.ws.location
-  resource_group_name = data.azurerm_resource_group.ws.name
-  application_type    = "web"
-  tags                = local.tre_workspace_service_tags
-
-  lifecycle { ignore_changes = [tags] }
-}
-
 data "azurerm_key_vault" "ws" {
   name                = local.keyvault_name
+  resource_group_name = data.azurerm_resource_group.ws.name
+}
+
+data "azurerm_log_analytics_workspace" "ws" {
+  name                = var.log_analytics_workspace_name
   resource_group_name = data.azurerm_resource_group.ws.name
 }
 
@@ -46,4 +41,28 @@ data "azurerm_private_dns_zone" "azuremlcert" {
 data "azurerm_private_dns_zone" "notebooks" {
   name                = module.terraform_azurerm_environment_configuration.private_links["privatelink.notebooks.azure.net"]
   resource_group_name = local.core_resource_group_name
+}
+
+data "azurerm_key_vault_key" "ws_encryption_key" {
+  count        = var.enable_cmk_encryption ? 1 : 0
+  name         = local.cmk_name
+  key_vault_id = var.key_store_id
+}
+
+data "azurerm_user_assigned_identity" "ws_encryption_identity" {
+  count               = var.enable_cmk_encryption ? 1 : 0
+  name                = local.encryption_identity_name
+  resource_group_name = data.azurerm_resource_group.ws.name
+}
+
+data "azurerm_role_definition" "reader" {
+  name = "Reader"
+}
+
+data "azurerm_role_definition" "storage_blob_data_contributor" {
+  name = "Storage Blob Data Contributor"
+}
+
+data "azurerm_role_definition" "storage_file_data_contributor" {
+  name = "Storage File Data Privileged Contributor"
 }

@@ -13,7 +13,7 @@
     "tre_id": {
       "description": "TRE unique identifier",
       "type": "string",
-      "pattern": "^[a-zA-Z 0-9\\_]*$",
+      "pattern": "^[a-z0-9]*$",
       "maxLength": 11
     },
     "management": {
@@ -51,6 +51,14 @@
           "description": "The Azure subscription ID for all resources.",
           "type": "string",
           "pattern": "^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$"
+        },
+        "encryption_kv_name": {
+          "description": "Name of Key Vault for encryption keys.",
+          "type": "string"
+        },
+        "external_key_store_id": {
+          "description": "ID of external Key Vault to store CMKs.",
+          "type": "string"
         }
       },
       "required": [
@@ -69,6 +77,10 @@
           "description": "Allow airlock malware scanning.",
           "type": "boolean"
         },
+        "enable_airlock_email_check": {
+          "description": "Require email check for airlock.",
+          "type": "boolean"
+        },
         "core_address_space": {
           "description": "TRE core address spaces.",
           "type": "string"
@@ -81,10 +93,33 @@
           "description": "Determines whether the Swagger interface for the API will be available.",
           "type": "boolean"
         },
-        "tre_url": {
-          "description": "Url for the TRE environment.",
-          "type": "string",
-          "pattern": "^https?://"
+        "firewall_sku": {
+          "description": "SKU of the Azure Firewall.",
+          "type": "string"
+        },
+        "app_gateway_sku": {
+          "description": "SKU of the Application Gateway.",
+          "type": "string"
+        },
+        "deploy_bastion": {
+          "description": "Deploy Azure Bastion.",
+          "type": "boolean"
+        },
+        "bastion_sku": {
+          "description": "SKU of the Azure Bastion.",
+          "type": "string"
+        },
+        "custom_domain": {
+          "description": "Custom domain name.",
+          "type": "string"
+        },
+        "enable_cmk_encryption": {
+          "description": "Enables customer-managed key encryption for all supported resources.",
+          "type": "boolean"
+        },
+        "private_agent_subnet_id": {
+          "description": "Subnet ID of private runner agent.",
+          "type": "string"
         }
       }
     },
@@ -103,6 +138,10 @@
         },
         "auto_workspace_group_creation": {
           "description": "This identity can create security groups aligned to each applciation role. Read more about it here: docs/tre-admins/auth.md",
+          "type": "boolean"
+        },
+        "auto_grant_workspace_consent": {
+          "description": "The identity will be be able to grant admin consent on new workspaces.",
           "type": "boolean"
         },
         "api_client_id": {
@@ -154,6 +193,20 @@
       "required": [
         "aad_tenant_id"
       ]
+    },
+    "ui_config": {
+      "description": "UI customisation",
+      "type": "object",
+      "properties": {
+        "ui_site_name": {
+          "description": "Product name shown in top left corner of portal. Default value is 'Azure TRE'",
+          "type": "string"
+        },
+        "ui_footer_text": {
+          "description": "Text shown in bottom left corner of portal. Default value is 'Azure Trusted Research Environment'",
+          "type": "string"
+        }
+      }
     }
   },
   "required": [

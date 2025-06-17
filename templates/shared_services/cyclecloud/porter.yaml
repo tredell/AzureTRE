@@ -1,7 +1,7 @@
 ---
 schemaVersion: 1.0.0
 name: tre-shared-service-cyclecloud
-version: 0.5.1
+version: 0.7.3
 description: "An Azure TRE Shared Service Template for Azure Cyclecloud"
 registry: azuretre
 dockerfile: Dockerfile.tmpl
@@ -46,71 +46,84 @@ parameters:
     env: ARM_ENVIRONMENT
     type: string
     default: "public"
+  - name: enable_cmk_encryption
+    type: boolean
+    default: false
+  - name: key_store_id
+    type: string
+    default: ""
 
 outputs:
   - name: connection_uri
     type: string
     applyTo:
       - install
-
+      - upgrade
+  - name: shared_subnet_address_prefixes
+    type: string
+    applyTo:
+      - install
+      - upgrade
 
 mixins:
   - exec
   - terraform:
-      clientVersion: 1.3.6
+      clientVersion: 1.9.8
   - az:
-      clientVersion: 2.37.0
+      clientVersion: 2.67.0
 
 install:
   - terraform:
       description: "Deploy Cyclecloud shared service"
       vars:
         tre_id: ${ bundle.parameters.tre_id }
-        arm_client_id: ${ bundle.credentials.azure_client_id }
-        arm_client_secret: ${ bundle.credentials.azure_client_secret }
-        arm_tenant_id: ${ bundle.credentials.azure_tenant_id }
-        arm_use_msi: ${ bundle.parameters.arm_use_msi }
         tre_resource_id: ${ bundle.parameters.id }
         arm_environment: ${ bundle.parameters.arm_environment }
+        enable_cmk_encryption: ${ bundle.parameters.enable_cmk_encryption }
+        key_store_id: ${ bundle.parameters.key_store_id }
       backendConfig:
+        use_azuread_auth: "true"
+        use_oidc: "true"
         resource_group_name: ${ bundle.parameters.tfstate_resource_group_name }
         storage_account_name: ${ bundle.parameters.tfstate_storage_account_name }
         container_name: ${ bundle.parameters.tfstate_container_name }
         key: ${ bundle.parameters.id }
       outputs:
         - name: connection_uri
+        - name: shared_subnet_address_prefixes
 
 upgrade:
   - terraform:
       description: "Update Cyclecloud shared service"
       vars:
         tre_id: ${ bundle.parameters.tre_id }
-        arm_client_id: ${ bundle.credentials.azure_client_id }
-        arm_client_secret: ${ bundle.credentials.azure_client_secret }
-        arm_tenant_id: ${ bundle.credentials.azure_tenant_id }
-        arm_use_msi: ${ bundle.parameters.arm_use_msi }
         tre_resource_id: ${ bundle.parameters.id }
         arm_environment: ${ bundle.parameters.arm_environment }
+        enable_cmk_encryption: ${ bundle.parameters.enable_cmk_encryption }
+        key_store_id: ${ bundle.parameters.key_store_id }
       backendConfig:
+        use_azuread_auth: "true"
+        use_oidc: "true"
         resource_group_name: ${ bundle.parameters.tfstate_resource_group_name }
         storage_account_name: ${ bundle.parameters.tfstate_storage_account_name }
         container_name: ${ bundle.parameters.tfstate_container_name }
         key: ${ bundle.parameters.id }
       outputs:
         - name: connection_uri
+        - name: shared_subnet_address_prefixes
 
 uninstall:
   - terraform:
       description: "Delete the Cyclecloud shared service"
       vars:
         tre_id: ${ bundle.parameters.tre_id }
-        arm_client_id: ${ bundle.credentials.azure_client_id }
-        arm_client_secret: ${ bundle.credentials.azure_client_secret }
-        arm_tenant_id: ${ bundle.credentials.azure_tenant_id }
-        arm_use_msi: ${ bundle.parameters.arm_use_msi }
         tre_resource_id: ${ bundle.parameters.id }
         arm_environment: ${ bundle.parameters.arm_environment }
+        enable_cmk_encryption: ${ bundle.parameters.enable_cmk_encryption }
+        key_store_id: ${ bundle.parameters.key_store_id }
       backendConfig:
+        use_azuread_auth: "true"
+        use_oidc: "true"
         resource_group_name: ${ bundle.parameters.tfstate_resource_group_name }
         storage_account_name: ${ bundle.parameters.tfstate_storage_account_name }
         container_name: ${ bundle.parameters.tfstate_container_name }
@@ -122,6 +135,8 @@ start:
         - "output"
       description: "Get resource ID from Terraform outputs"
       backendConfig:
+        use_azuread_auth: "true"
+        use_oidc: "true"
         resource_group_name: ${ bundle.parameters.tfstate_resource_group_name }
         storage_account_name: ${ bundle.parameters.tfstate_storage_account_name }
         container_name: ${ bundle.parameters.tfstate_container_name }
@@ -156,6 +171,8 @@ stop:
         - "output"
       description: "Get VM hostname and rg from Terraform outputs"
       backendConfig:
+        use_azuread_auth: "true"
+        use_oidc: "true"
         resource_group_name: ${ bundle.parameters.tfstate_resource_group_name }
         storage_account_name: ${ bundle.parameters.tfstate_storage_account_name }
         container_name: ${ bundle.parameters.tfstate_container_name }

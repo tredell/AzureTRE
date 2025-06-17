@@ -1,3 +1,10 @@
+
+resource "time_sleep" "wait_180_seconds" {
+  depends_on = [azurerm_network_interface.internal]
+
+  destroy_duration = "180s"
+}
+
 resource "azurerm_network_interface" "internal" {
   name                = "internal-nic-${local.service_resource_name_suffix}"
   location            = data.azurerm_resource_group.ws.location
@@ -9,6 +16,8 @@ resource "azurerm_network_interface" "internal" {
     subnet_id                     = data.azurerm_subnet.services.id
     private_ip_address_allocation = "Dynamic"
   }
+
+  lifecycle { ignore_changes = [tags] }
 }
 
 resource "random_string" "username" {
@@ -43,6 +52,9 @@ resource "azurerm_windows_virtual_machine" "windowsvm" {
   allow_extension_operations = true
   admin_username             = random_string.username.result
   admin_password             = random_password.password.result
+  encryption_at_host_enabled = true
+  secure_boot_enabled        = local.secure_boot_enabled
+  vtpm_enabled               = local.vtpm_enabled
 
   custom_data = base64encode(data.template_file.download_review_data_script.rendered)
 
@@ -59,9 +71,10 @@ resource "azurerm_windows_virtual_machine" "windowsvm" {
   }
 
   os_disk {
-    name                 = "osdisk-${local.vm_name}"
-    caching              = "ReadWrite"
-    storage_account_type = "Standard_LRS"
+    name                   = "osdisk-${local.vm_name}"
+    caching                = "ReadWrite"
+    storage_account_type   = "Standard_LRS"
+    disk_encryption_set_id = var.enable_cmk_encryption ? azurerm_disk_encryption_set.windowsvm_disk_encryption[0].id : null
   }
 
   identity {
@@ -69,6 +82,28 @@ resource "azurerm_windows_virtual_machine" "windowsvm" {
   }
 
   tags = local.tre_user_resources_tags
+
+  # ignore changes to secure_boot_enabled and vtpm_enabled as these are destructive
+  # (may be allowed once https://github.com/hashicorp/terraform-provider-azurerm/issues/25808 is fixed)
+  #
+  lifecycle { ignore_changes = [tags, secure_boot_enabled, vtpm_enabled, custom_data] }
+
+  depends_on = [time_sleep.wait_180_seconds]
+}
+
+resource "azurerm_disk_encryption_set" "windowsvm_disk_encryption" {
+  count                     = var.enable_cmk_encryption ? 1 : 0
+  name                      = "disk-encryption-windowsvm-${var.tre_id}-${var.tre_resource_id}"
+  location                  = data.azurerm_resource_group.ws.location
+  resource_group_name       = data.azurerm_resource_group.ws.name
+  key_vault_key_id          = data.azurerm_key_vault_key.ws_encryption_key[0].versionless_id
+  encryption_type           = "EncryptionAtRestWithPlatformAndCustomerKeys"
+  auto_key_rotation_enabled = true
+
+  identity {
+    type         = "UserAssigned"
+    identity_ids = [data.azurerm_user_assigned_identity.ws_encryption_identity[0].id]
+  }
 }
 
 resource "azurerm_virtual_machine_extension" "config_script" {
@@ -84,6 +119,8 @@ resource "azurerm_virtual_machine_extension" "config_script" {
       "commandToExecute": "powershell -ExecutionPolicy Unrestricted -NoProfile -NonInteractive -command \"cp c:/azuredata/customdata.bin c:/azuredata/configure.ps1; c:/azuredata/configure.ps1 \""
     }
 PROT
+
+  lifecycle { ignore_changes = [tags] }
 }
 
 resource "azurerm_key_vault_secret" "windowsvm_password" {
@@ -91,6 +128,8 @@ resource "azurerm_key_vault_secret" "windowsvm_password" {
   value        = "${random_string.username.result}\n${random_password.password.result}"
   key_vault_id = data.azurerm_key_vault.ws.id
   tags         = local.tre_user_resources_tags
+
+  lifecycle { ignore_changes = [tags] }
 }
 
 data "template_file" "download_review_data_script" {

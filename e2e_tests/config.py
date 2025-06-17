@@ -1,7 +1,9 @@
+import warnings
 from starlette.config import Config
 
+warnings.filterwarnings("ignore", message="Config file '.env' not found.")
 
-config = Config(".env")
+config = Config('.env')
 
 # Resource Info
 RESOURCE_LOCATION: str = config("RESOURCE_LOCATION", default="")

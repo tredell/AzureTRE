@@ -47,9 +47,9 @@
       }
     },
     {
-      "name": "sku_tier",
+      "name": "firewall_sku",
       "source": {
-        "env": "SKU_TIER"
+        "env": "FIREWALL_SKU"
       }
     },
     {
@@ -62,6 +62,12 @@
       "name": "arm_environment",
       "source": {
         "env": "ARM_ENVIRONMENT"
+      }
+    },
+    {
+      "name": "firewall_force_tunnel_ip",
+      "source": {
+        "env": "FIREWALL_FORCE_TUNNEL_IP"
       }
     }
   ]

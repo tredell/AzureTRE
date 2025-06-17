@@ -14,7 +14,7 @@ resource "azurerm_subnet" "services" {
   resource_group_name  = var.ws_resource_group_name
   address_prefixes     = [local.services_subnet_address_prefix]
   # notice that private endpoints do not adhere to NSG rules
-  private_endpoint_network_policies_enabled     = false
+  private_endpoint_network_policies             = "Disabled"
   private_link_service_network_policies_enabled = true
 }
 
@@ -24,7 +24,7 @@ resource "azurerm_subnet" "webapps" {
   resource_group_name  = var.ws_resource_group_name
   address_prefixes     = [local.webapps_subnet_address_prefix]
   # notice that private endpoints do not adhere to NSG rules
-  private_endpoint_network_policies_enabled     = false
+  private_endpoint_network_policies             = "Disabled"
   private_link_service_network_policies_enabled = true
 
   delegation {
@@ -51,6 +51,11 @@ resource "azurerm_virtual_network_peering" "ws_core_peer" {
   triggers = {
     remote_address_space = join(",", data.azurerm_virtual_network.core.address_space)
   }
+
+  # meant to resolve AnotherOperation errors with one operation in the vnet at a time
+  depends_on = [
+    azurerm_subnet.webapps
+  ]
 }
 
 moved {
@@ -67,6 +72,12 @@ resource "azurerm_virtual_network_peering" "core_ws_peer" {
   triggers = {
     remote_address_space = join(",", azurerm_virtual_network.ws.address_space)
   }
+
+  # meant to resolve AnotherOperation errors with one operation in the vnet at a time
+  depends_on = [
+    azurerm_virtual_network_peering.ws_core_peer
+  ]
+
 }
 
 moved {
@@ -79,7 +90,7 @@ resource "azurerm_subnet_route_table_association" "rt_services_subnet_associatio
   subnet_id      = azurerm_subnet.services.id
   depends_on = [
     # meant to resolve AnotherOperation errors with one operation in the vnet at a time
-    azurerm_subnet.webapps
+    azurerm_virtual_network_peering.core_ws_peer
   ]
 }
 
@@ -94,6 +105,22 @@ resource "azurerm_subnet_route_table_association" "rt_webapps_subnet_association
 }
 
 module "terraform_azurerm_environment_configuration" {
-  source          = "git::https://github.com/microsoft/terraform-azurerm-environment-configuration.git?ref=0.2.0"
+  source          = "git::https://github.com/microsoft/terraform-azurerm-environment-configuration.git?ref=0.6.0"
   arm_environment = var.arm_environment
+}
+
+# Link the workspace network to the DNS Security Policy defined in the core resource group.
+resource "azapi_resource" "dns_policy_vnet_link" {
+  count     = var.enable_dns_policy ? 1 : 0
+  type      = "Microsoft.Network/dnsResolverPolicies/virtualNetworkLinks@2023-07-01-preview"
+  parent_id = "${data.azurerm_resource_group.core.id}/providers/Microsoft.Network/dnsResolverPolicies/${local.dns_policy_name}"
+  name      = azurerm_virtual_network.ws.name
+  location  = var.location
+  body = {
+    properties = {
+      virtualNetwork = {
+        id = azurerm_virtual_network.ws.id
+      }
+    }
+  }
 }

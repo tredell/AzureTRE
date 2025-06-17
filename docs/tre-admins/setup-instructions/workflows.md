@@ -63,7 +63,7 @@ Configure the TRE ID and LOCATION repository secrets
 
 | <div style="width: 230px">Secret name</div> | Description |
 | ----------- | ----------- |
-| `TRE_ID` | A globally unique identifier. `TRE_ID` can be found in the resource names of the Azure TRE instance; for example, a `TRE_ID` of `tre-dev-42` will result in a resource group name for Azure TRE instance of `rg-tre-dev-42`. This must be less than 12 characters. Allowed characters: Alphanumeric and underscores. |
+| `TRE_ID` | A globally unique identifier. `TRE_ID` can be found in the resource names of the Azure TRE instance; for example, a `TRE_ID` of `tre-dev-42` will result in a resource group name for Azure TRE instance of `rg-tre-dev-42`. This must be less than 12 characters. Allowed characters: lowercase alphanumerics. |
 | `LOCATION` | The Azure location (region) for all resources. E.g. `westeurope` |
 
 ### Create app registrations for API authentication
@@ -74,7 +74,7 @@ Configure the TRE API and Swagger UI repository secrets
 
 | <div style="width: 230px">Secret name</div> | Description |
 | ----------- | ----------- |
-| `AAD_TENANT_ID` | The tenant ID of the Azure AD. |
+| `AAD_TENANT_ID` | The tenant ID of the Microsoft Entra ID. |
 | `SWAGGER_UI_CLIENT_ID` | The application (client) ID of the TRE Swagger UI app. |
 | `API_CLIENT_ID` | The application (client) ID of the TRE API app. |
 | `API_CLIENT_SECRET` | The application password (client secret) of the TRE API app. |
@@ -123,10 +123,11 @@ Configure additional secrets used in the deployment workflow:
 
 | <div style="width: 230px">Secret name</div> | Description |
 | ----------- | ----------- |
-| `TRE_ID` | A globally unique identifier. `TRE_ID` can be found in the resource names of the Azure TRE instance; for example, a `TRE_ID` of `tre-dev-42` will result in a resource group name for Azure TRE instance of `rg-tre-dev-42`. This must be less than 12 characters. Allowed characters: Alphanumeric, underscores, and hyphens. |
+| `TRE_ID` | A globally unique identifier. `TRE_ID` can be found in the resource names of the Azure TRE instance; for example, a `TRE_ID` of `tre-dev-42` will result in a resource group name for Azure TRE instance of `rg-tre-dev-42`. This must be less than 12 characters. Allowed characters: lowercase alphanumerics. |
 | `MGMT_RESOURCE_GROUP_NAME` | The name of the shared resource group for all Azure TRE core resources. |
 | `MGMT_STORAGE_ACCOUNT_NAME` | The name of the storage account to hold the Terraform state and other deployment artifacts. E.g. `mystorageaccount`. |
 | `ACR_NAME` | A globally unique name for the Azure Container Registry (ACR) that will be created to store deployment images. |
+| `CUSTOM_DOMAIN` | Optional. Custom domain name to access the Azure TRE portal. See [Custom domain name](../custom-domain.md). |
 
 
 ### Configure repository/environment variables
@@ -144,7 +145,9 @@ Configure variables used in the deployment workflow:
 | `WORKSPACE_APP_SERVICE_PLAN_SKU` | Optional. The SKU used for AppService plan used in E2E tests. Default value is `P1v2`. |
 | `RESOURCE_PROCESSOR_NUMBER_PROCESSES_PER_INSTANCE` | Optional. The number of processes to instantiate when the Resource Processor starts. Equates to the number of parallel deployment operations possible in your TRE. Defaults to `5`. |
 | `ENABLE_SWAGGER` | Optional. Determines whether the Swagger interface for the API will be available. Default value is `false`. |
-
+| `FIREWALL_SKU` | Optional. The SKU of the Azure Firewall instance. Default value is `Standard`. Allowed values [`Basic`, `Standard`, `Premium`]. See [Azure Firewall SKU feature comparison](https://learn.microsoft.com/en-us/azure/firewall/choose-firewall-sku). |
+| `APP_GATEWAY_SKU` | Optional. The SKU of the Application Gateway. Default value is `Standard_v2`. Allowed values [`Standard_v2`, `WAF_v2`] |
+| `ENABLE_CMK_ENCRYPTION` | Optional. Default is `false`, if set to `true` customer-managed key encryption will be enabled for all supported resources. |
 
 ### Deploy the TRE using the workflow
 

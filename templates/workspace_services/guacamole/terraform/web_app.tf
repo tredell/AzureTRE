@@ -1,8 +1,3 @@
-data "azurerm_service_plan" "workspace" {
-  name                = "plan-${var.workspace_id}"
-  resource_group_name = data.azurerm_resource_group.ws.name
-}
-
 # we have to use user-assigned to break a cycle in the dependencies: app identity, kv-policy, secrets in app settings
 resource "azurerm_user_assigned_identity" "guacamole_id" {
   resource_group_name = data.azurerm_resource_group.ws.name
@@ -14,14 +9,17 @@ resource "azurerm_user_assigned_identity" "guacamole_id" {
 }
 
 resource "azurerm_linux_web_app" "guacamole" {
-  name                            = local.webapp_name
-  location                        = data.azurerm_resource_group.ws.location
-  resource_group_name             = data.azurerm_resource_group.ws.name
-  service_plan_id                 = data.azurerm_service_plan.workspace.id
-  https_only                      = true
-  key_vault_reference_identity_id = azurerm_user_assigned_identity.guacamole_id.id
-  virtual_network_subnet_id       = data.azurerm_subnet.web_apps.id
-  tags                            = local.workspace_service_tags
+  name                                           = local.webapp_name
+  location                                       = data.azurerm_resource_group.ws.location
+  resource_group_name                            = data.azurerm_resource_group.ws.name
+  service_plan_id                                = data.azurerm_service_plan.workspace.id
+  https_only                                     = true
+  key_vault_reference_identity_id                = azurerm_user_assigned_identity.guacamole_id.id
+  virtual_network_subnet_id                      = data.azurerm_subnet.web_apps.id
+  ftp_publish_basic_authentication_enabled       = false
+  webdeploy_publish_basic_authentication_enabled = false
+  tags                                           = local.workspace_service_tags
+  public_network_access_enabled                  = var.is_exposed_externally
 
   site_config {
     http2_enabled                                 = true
@@ -29,11 +27,11 @@ resource "azurerm_linux_web_app" "guacamole" {
     container_registry_managed_identity_client_id = azurerm_user_assigned_identity.guacamole_id.client_id
     ftps_state                                    = "Disabled"
     vnet_route_all_enabled                        = true
-    minimum_tls_version                           = "1.2"
+    minimum_tls_version                           = "1.3"
 
     application_stack {
-      docker_image     = "${data.azurerm_container_registry.mgmt_acr.login_server}/microsoft/azuretre/${var.image_name}"
-      docker_image_tag = local.image_tag
+      docker_registry_url = "https://${data.azurerm_container_registry.mgmt_acr.login_server}"
+      docker_image_name   = "microsoft/azuretre/${var.image_name}:${local.image_tag}"
     }
   }
 
@@ -57,6 +55,7 @@ resource "azurerm_linux_web_app" "guacamole" {
     GUAC_DRIVE_PATH       = var.guac_drive_path
     GUAC_DISABLE_DOWNLOAD = var.guac_disable_download
     GUAC_DISABLE_UPLOAD   = var.guac_disable_upload
+    GUAC_SERVER_LAYOUT    = var.guac_server_layout
 
     AUDIENCE = "@Microsoft.KeyVault(SecretUri=${data.azurerm_key_vault_secret.workspace_client_id.id})"
     ISSUER   = local.issuer
@@ -91,7 +90,33 @@ resource "azurerm_linux_web_app" "guacamole" {
 
   depends_on = [
     azurerm_role_assignment.guac_acr_pull,
-    azurerm_key_vault_access_policy.guacamole_policy
+    azurerm_role_assignment.keyvault_guacamole_ws_role
+  ]
+}
+
+resource "azapi_update_resource" "guac_vnet_container_pull_routing" {
+  resource_id = azurerm_linux_web_app.guacamole.id
+  type        = "Microsoft.Web/sites@2022-09-01"
+
+  body = jsonencode({
+    properties = {
+      vnetImagePullEnabled : true
+    }
+  })
+
+  depends_on = [
+    azurerm_linux_web_app.guacamole
+  ]
+}
+
+resource "azapi_resource_action" "restart_guac_webapp" {
+  type        = "Microsoft.Web/sites@2022-09-01"
+  resource_id = azurerm_linux_web_app.guacamole.id
+  method      = "POST"
+  action      = "restart"
+
+  depends_on = [
+    azapi_update_resource.guac_vnet_container_pull_routing
   ]
 }
 
@@ -104,21 +129,12 @@ resource "azurerm_monitor_diagnostic_setting" "guacamole" {
     for_each = setintersection(data.azurerm_monitor_diagnostic_categories.guacamole.log_category_types, local.guacamole_diagnostic_categories_enabled)
     content {
       category = enabled_log.value
-
-      retention_policy {
-        enabled = true
-        days    = 365
-      }
     }
   }
 
   metric {
     category = "AllMetrics"
     enabled  = true
-
-    retention_policy {
-      enabled = false
-    }
   }
 }
 
@@ -148,12 +164,12 @@ resource "azurerm_private_endpoint" "guacamole" {
     name                 = module.terraform_azurerm_environment_configuration.private_links["privatelink.azurewebsites.net"]
     private_dns_zone_ids = [data.azurerm_private_dns_zone.azurewebsites.id]
   }
+
+  lifecycle { ignore_changes = [tags] }
 }
 
-resource "azurerm_key_vault_access_policy" "guacamole_policy" {
-  key_vault_id = data.azurerm_key_vault.ws.id
-  tenant_id    = azurerm_user_assigned_identity.guacamole_id.tenant_id
-  object_id    = azurerm_user_assigned_identity.guacamole_id.principal_id
-
-  secret_permissions = ["Get", "List", ]
+resource "azurerm_role_assignment" "keyvault_guacamole_ws_role" {
+  scope                = data.azurerm_key_vault.ws.id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.guacamole_id.principal_id
 }

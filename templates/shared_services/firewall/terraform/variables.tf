@@ -23,7 +23,12 @@ variable "api_driven_network_rule_collections_b64" {
   default = "W10=" #b64 for []
 }
 
-variable "sku_tier" {
+variable "firewall_sku" {
   type    = string
-  default = "Standard"
+  default = ""
+}
+
+variable "firewall_force_tunnel_ip" {
+  type    = string
+  default = ""
 }

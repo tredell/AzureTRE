@@ -8,12 +8,11 @@ from helpers import assert_status, get_auth_header, get_template
 from resources import strings
 from helpers import get_admin_token
 
-pytestmark = pytest.mark.asyncio
+pytestmark = pytest.mark.asyncio(loop_scope="session")
 
 workspace_service_templates = [
     (strings.AZUREML_SERVICE),
     (strings.GUACAMOLE_SERVICE),
-    (strings.INNEREYE_SERVICE),
     (strings.GITEA_SERVICE)
 ]
 

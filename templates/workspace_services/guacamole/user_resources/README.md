@@ -2,9 +2,8 @@
 
 This folder contains user resources that can be deployed with the Guacamole workspace service:
 
-- linuxvm - a Linux-based virtual machine (expects an Ubuntu 18.04-based VM)
+- linuxvm - a Linux-based virtual machine
 - windowsvm - A Windows-based virtual machine
-
 
 ## Customising the user resources
 
@@ -29,26 +28,23 @@ custom:
     "8 CPU | 32GB RAM": Standard_D8s_v5
     "16 CPU | 64GB RAM": Standard_D16s_v5
   image_options:
-    "Ubuntu 18.04":
+    "Ubuntu 22.04 LTS":
       source_image_reference:
         publisher: canonical
-        offer: ubuntuserver
-        sku: 18_04-lts-gen2
+        offer: 0001-com-ubuntu-server-jammy
+        sku: 22_04-lts-gen2
         version: latest
+        apt_sku: 22.04
       install_ui: true
       conda_config: false
-    "Ubuntu 18.04 Data Science VM":
-      source_image_reference:
-        publisher: microsoft-dsvm
-        offer: ubuntu-1804
-        sku: 1804-gen2
-        version: latest
-      install_ui: false
-      conda_config: true
+      secure_boot_enabled: true
+      vtpm_enabled: true
     # "Custom Image From Gallery":
     #   source_image_name: your-image
     #   install_ui: true
     #   conda_config: true
+    #   secure_boot_enabled: true
+    #   vtpm_enabled: true
 ```
 
 The `vm_sizes` section is a map of a custom SKU description to the SKU identifier.
@@ -63,13 +59,13 @@ Within the image definition in `image_options` there are a few properties that c
 | `source_image_reference` | Specify VM image to use by `publisher`, `offer`, `sku` & `version` (e.g. for Azure Marketplace images)   |
 | `install_ui`             | (Linux only) Set `true` to install desktop environment                                                   |
 | `conda_config`           | Set true to configure conda                                                                              |
+| `secure_boot_enabled`    | Set true to enable [Secure Boot](https://learn.microsoft.com/en-us/azure/virtual-machines/trusted-launch#secure-boot).  Requires a Requires a [Gen 2](https://learn.microsoft.com/en-us/azure/virtual-machines/generation-2) VM image |
+| `vtpm_enabled`           | Set true to enable [Secure Boot](https://learn.microsoft.com/en-us/azure/virtual-machines/trusted-launch#vtpm).  Requires a [Gen 2](https://learn.microsoft.com/en-us/azure/virtual-machines/generation-2) VM image |
 
 When specifying images using `source_image_name`, the image must be stored in an [image gallery](https://learn.microsoft.com/en-us/azure/virtual-machines/azure-compute-gallery).
 To enable re-using built user resource templates across environments where the image may vary, the image gallery is configured via the `RP_BUNDLE_VALUES` environment variable when deploying the TRE.
 The `RP_BUNDLE_VALUES` variable is a JSON object, and the `image_gallery_id` property within it identifies the image gallery that contains the images specified by `source_image_name`:
 
-
 ```bash
 RP_BUNDLE_VALUES='{"image_gallery_id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/<your-rg>/providers/Microsoft.Compute/galleries/<your-gallery-name>"}
 ```
-

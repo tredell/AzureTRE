@@ -2,21 +2,16 @@ import pytest
 import pytest_asyncio
 from mock import patch
 
-from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
 from httpx import AsyncClient
 
 from models.domain.authentication import User
 
 
-@pytest_asyncio.fixture(autouse=True)
-def no_database():
-    """ overrides connecting to the database for all tests"""
-    with patch('api.dependencies.database.connect_to_db', return_value=None):
-        with patch('api.dependencies.database.get_db_client', return_value=None):
-            with patch('db.repositories.base.BaseRepository._get_container', return_value=None):
-                with patch('core.events.bootstrap_database', return_value=None):
-                    yield
+@pytest.fixture(autouse=True, scope='module')
+def no_lifespan_events():
+    with patch("main.lifespan"):
+        yield
 
 
 @pytest.fixture(autouse=True)
@@ -25,6 +20,12 @@ def no_auth_token():
     with patch('services.aad_authentication.AccessService.__call__', return_value="token"):
         with patch('services.aad_authentication.AzureADAuthorization._decode_token', return_value="decoded_token"):
             yield
+
+
+@pytest.fixture(autouse=True, scope="session")
+def patch_user_management_enabled():
+    with patch("core.config.USER_MANAGEMENT_ENABLED", new=True):
+        yield
 
 
 def create_test_user() -> User:
@@ -134,12 +135,7 @@ def app() -> FastAPI:
 
 
 @pytest_asyncio.fixture
-async def initialized_app(app: FastAPI) -> FastAPI:
-    async with LifespanManager(app):
-        yield app
+async def client(app: FastAPI) -> AsyncClient:
 
-
-@pytest_asyncio.fixture
-async def client(initialized_app: FastAPI) -> AsyncClient:
-    async with AsyncClient(app=initialized_app, base_url="http://testserver", headers={"Content-Type": "application/json"}) as client:
+    async with AsyncClient(app=app, base_url="http://testserver", headers={"Content-Type": "application/json"}) as client:
         yield client

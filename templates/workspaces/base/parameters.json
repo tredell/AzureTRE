@@ -147,6 +147,24 @@
       "source": {
         "env": "AZURE_ENVIRONMENT"
       }
+    },
+    {
+      "name": "enable_cmk_encryption",
+      "source": {
+        "env": "ENABLE_CMK_ENCRYPTION"
+      }
+    },
+    {
+      "name": "key_store_id",
+      "source": {
+        "env": "KEY_STORE_ID"
+      }
+    },
+    {
+      "name": "enable_dns_policy",
+      "source": {
+        "env": "ENABLE_DNS_POLICY"
+      }
     }
   ]
 }

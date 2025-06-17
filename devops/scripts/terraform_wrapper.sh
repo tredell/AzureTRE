@@ -1,13 +1,13 @@
 #!/bin/bash
 set -e
 
-
 function usage() {
     cat <<USAGE
 
-    Usage: $0 [-g | --mgmt-resource-group-name ]  [-s | --mgmt-storage-account-name] [-n | --state-container-name] [-k | --key] [-c | --cmd] [-l | --logfile]
+    Usage: $0 [-d | --directory] [-g | --mgmt-resource-group-name ]  [-s | --mgmt-storage-account-name] [-n | --state-container-name] [-k | --key] [-c | --cmd] [-l | --logfile]
 
     Options:
+        -d, --directory                     Directory to change to before executing commands
         -g, --mgmt-resource-group-name      Management resource group name
         -s, --mgmt-storage-account-name     Management storage account name
         -n, --state-container-name          State container name
@@ -25,6 +25,10 @@ fi
 
 while [ "$1" != "" ]; do
     case $1 in
+    -d | --directory)
+        shift
+        DIR=$1
+        ;;
     -g | --mgmt-resource-group-name)
         shift
         mgmt_resource_group_name=$1
@@ -60,6 +64,10 @@ while [ "$1" != "" ]; do
     shift # remove the current value for `$1` and use the next
 done
 
+if [[ -z ${DIR+x} ]]; then
+    echo -e "No directory provided\n"
+    usage
+fi
 
 if [[ -z ${mgmt_resource_group_name+x} ]]; then
     echo -e "No terraform state resource group name provided\n"
@@ -91,6 +99,13 @@ if [[ -z ${tf_logfile+x} ]]; then
     echo -e "No logfile provided, using ${tf_logfile}\n"
 fi
 
+
+# shellcheck disable=SC1091
+source "$(dirname "$0")/mgmtstorage_enable_public_access.sh"
+
+# Change directory to $DIR
+pushd "$DIR" > /dev/null
+
 terraform init -input=false -backend=true -reconfigure \
     -backend-config="resource_group_name=${mgmt_resource_group_name}" \
     -backend-config="storage_account_name=${mgmt_storage_account_name}" \
@@ -107,14 +122,14 @@ do
 
     # upload the log file?
     if [[ $TF_LOG == "DEBUG" ]] ; then
-      az storage blob upload --file $tf_logfile \
+      az storage blob upload --file "$tf_logfile" \
         --container-name "tflogs" \
         --account-name "$mgmt_storage_account_name" \
         --auth-mode key
     fi
 
-    LOCKED_STATE=$(cat ${tf_logfile} |  grep -c 'Error acquiring the state lock') || true;
-    TF_ERROR=$(cat ${tf_logfile} |  grep -c 'COMMAND_EXIT_CODE="1"') || true;
+    LOCKED_STATE=$(cat < "$tf_logfile" |  grep -c 'Error acquiring the state lock') || true;
+    TF_ERROR=$(cat < "$tf_logfile" |  grep -c 'COMMAND_EXIT_CODE="1"') || true;
     if [[ $LOCKED_STATE -gt 0  ]];
     then
         RUN_COMMAND=1
@@ -127,4 +142,5 @@ do
     fi
 done
 
-
+# Return to the original directory
+popd > /dev/null

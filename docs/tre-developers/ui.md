@@ -4,11 +4,11 @@ This project contains a React-based web UI which covers the core aspects of a TR
 
 ## Chosen UI Stack + Components
 The UI is built upon several popular web frameworks:
-- React v18 (created via create-react-app, with all build configurations left as defaults)
+- React v18 (with Vite)
   - Typescript
   - React Router v6 for client side routing
 - Fluent UI [Fluent UI Docs](https://developer.microsoft.com/en-us/fluentui#/controls/web)
-- MSAL v2: AAD authentication [msal-react docs](https://github.com/AzureAD/microsoft-authentication-library-for-js/tree/dev/lib/msal-react)
+- MSAL v2: Microsoft Entra ID authentication [msal-react docs](https://github.com/AzureAD/microsoft-authentication-library-for-js/tree/dev/lib/msal-react)
 
 
 ### Folder structure
@@ -27,7 +27,7 @@ ui
 ### AuthN + AuthZ
 For further details on the auth setup, see [Auth](../tre-admins/auth.md).
 
-As stated above, AAD is used for Authentication and Authorization. There are 3 AAD apps involved here:
+As stated above, Microsoft Entra ID is used for Authentication and Authorization. There are 3 Microsoft Entra ID apps involved here:
 - **TRE UX**. This is the app that the user authenticates against. Once authenticated, the client will request an access token for the `TRE Api`.
 - **TRE Api**. In the access token response from this app we get the user's role membership for TRE-level roles (`TREAdmin` / `TREUser`). Based on these role memberships, aspects of the UI will be made available. If the user is in a `TREAdmin` role, they will see buttons to create workspaces for instance.
 When the user navigates into a Workspace, the client will request an access token for that `Workspace App`.
@@ -39,7 +39,7 @@ From this access token we can find the Workspace-level roles the user is in (`Wo
 ### React Contexts
 The React Context API is a clean way to handle a limited amount of global state, and is used for a few scenarios in this project:
 - TRE Roles Context: A context provides details of the base TRE roles a user is in, which can be consumed anywhere throughout the app
-- Workspace Context: Tracks the currently selected Workspace, and the roles the user is in for that Workspace. This context is used for nested components to be able to authenticate against the correct AAD App via `workspaceCtx.workspaceApplicationIdURI`.
+- Workspace Context: Tracks the currently selected Workspace, and the roles the user is in for that Workspace. This context is used for nested components to be able to authenticate against the correct Microsoft Entra ID App via `workspaceCtx.workspaceApplicationIdURI`.
 - Create Form Context: A context to control the Create / Update form behaviour.
 - Notifications Context: Tracks all the in-progress operations currently running. For each operation, the Notifications panel also uses this context to broadcast Component 'actions' which are subscribed to by downstream components. This way, a resource component does not have to track it's own changes, and can be 'told' by the Notifications Context whether it should refresh / lock etc.
 
@@ -54,4 +54,53 @@ The UI is deployed as part of the `tre-deploy` make target (unless you set `depl
 To re-deploy _just_ the UI (after an initial deploy), run `make build-and-deploy-ui` from the root of the dev container. This will:
 - Use the environment variables from your deployment to create a `config.json` file for the UI
 - Build the source code, via `yarn build`
-- Deploy the code to Azure blob storage, where it will be statically served behind the App Gateway that also fronts the APi.
+- Deploy the code to Azure blob storage, where it will be statically served behind the App Gateway that also fronts the API.
+
+## Run the UI
+- Ensure `deploy_ui=false` is not set in your `./config.yaml` file
+- In the root of the repo, run `make tre-deploy`. This will provision the necessary resources in Azure, build and deploy the UI to Azure blob storage, behind the App Gateway used for the API. The deployment process will also create the necessary `config.json`, using the `config.source.json` as a template.
+- In Microsoft Entra ID, locate the TRE Client Apps app (possibly called Swagger App). In the Authentication section add reply URIs for:
+  - `http://localhost:3000` (if wanting to run locally)
+  - Your deployed App Url - `https://{TRE_ID}.{LOCATION}.cloudapp.azure.com`.
+
+At this point you should be able to navigate to the web app in Azure, log in, and see your workspaces.
+
+## Available Scripts
+
+In the UI directory, you can run:
+
+### `yarn start`
+
+Runs the app in the development mode.<br>
+Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+
+The page will reload if you make edits.<br>
+You will also see any lint errors in the console.
+
+### `yarn test`
+
+Launches the test runner in the interactive watch mode.<br>
+
+### `yarn run build`
+
+Builds the app for production to the `build` folder.<br>
+It correctly bundles React in production mode and optimizes the build for the best performance.
+
+The build is minified and the filenames include the hashes.<br>
+Your app is ready to be deployed!
+
+### `yarn run serve`
+
+Serves the production build from the `build` folder.<br>
+
+### `yarn run test:coverage`
+
+Runs the tests and generates a coverage report.<br>
+
+### `yarn lint`
+
+Runs the linter on the project.<br>
+
+### `yarn format`
+
+Runs the formatter on the project.<br>

@@ -26,6 +26,14 @@ output "keyvault_name" {
   value = azurerm_key_vault.kv.name
 }
 
+output "keyvault_uri" {
+  value = azurerm_key_vault.kv.vault_uri
+}
+
+output "keyvault_resource_id" {
+  value = azurerm_key_vault.kv.id
+}
+
 output "service_bus_resource_id" {
   value = azurerm_servicebus_namespace.sb.id
 }
@@ -55,7 +63,7 @@ output "state_store_endpoint" {
 }
 
 output "cosmosdb_mongo_endpoint" {
-  value     = azurerm_cosmosdb_account.mongo.connection_strings[0]
+  value     = azurerm_cosmosdb_account.mongo.primary_sql_connection_string
   sensitive = true
 }
 

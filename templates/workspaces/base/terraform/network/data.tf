@@ -1,3 +1,7 @@
+data "azurerm_resource_group" "core" {
+  name = local.core_resource_group_name
+}
+
 data "azurerm_virtual_network" "core" {
   name                = local.core_vnet
   resource_group_name = local.core_resource_group_name
@@ -90,6 +94,21 @@ data "azurerm_private_dns_zone" "mysql" {
 
 data "azurerm_private_dns_zone" "postgres" {
   name                = module.terraform_azurerm_environment_configuration.private_links["privatelink.postgres.database.azure.com"]
+  resource_group_name = local.core_resource_group_name
+}
+
+data "azurerm_private_dns_zone" "azuresql" {
+  name                = module.terraform_azurerm_environment_configuration.private_links["privatelink.database.windows.net"]
+  resource_group_name = local.core_resource_group_name
+}
+
+data "azurerm_private_dns_zone" "openai" {
+  name                = module.terraform_azurerm_environment_configuration.private_links["privatelink.openai.azure.com"]
+  resource_group_name = local.core_resource_group_name
+}
+
+data "azurerm_private_dns_zone" "cognitiveservices" {
+  name                = module.terraform_azurerm_environment_configuration.private_links["privatelink.cognitiveservices.azure.com"]
   resource_group_name = local.core_resource_group_name
 }
 

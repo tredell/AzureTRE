@@ -1,4 +1,6 @@
 locals {
+  version = replace(replace(replace(data.local_file.airlock_processor_version.content, "__version__ = \"", ""), "\"", ""), "\n", "")
+
   # STorage AirLock EXternal
   import_external_storage_name = lower(replace("stalimex${var.tre_id}", "-", ""))
   # STorage AirLock IMport InProgress
@@ -23,6 +25,7 @@ locals {
   status_changed_topic_name = "evgt-airlock-status-changed-${local.topic_name_suffix}"
   notification_topic_name   = "evgt-airlock-notification-${local.topic_name_suffix}"
   data_deletion_topic_name  = "evgt-airlock-data-deletion-${local.topic_name_suffix}"
+  scan_result_topic_name    = "evgt-airlock-scan-result-${local.topic_name_suffix}"
 
   step_result_queue_name    = "airlock-step-result"
   status_changed_queue_name = "airlock-status-changed"
@@ -35,6 +38,7 @@ locals {
   step_result_eventgrid_subscription_name       = "evgs-airlock-update-status"
   status_changed_eventgrid_subscription_name    = "evgs-airlock-status-changed"
   data_deletion_eventgrid_subscription_name     = "evgs-airlock-data-deletion"
+  scan_result_eventgrid_subscription_name       = "evgs-airlock-scan-result"
   import_inprogress_eventgrid_subscription_name = "evgs-airlock-import-in-progress-blob-created"
   import_rejected_eventgrid_subscription_name   = "evgs-airlock-import-rejected-blob-created"
   import_blocked_eventgrid_subscription_name    = "evgs-airlock-import-blocked-blob-created"
@@ -56,4 +60,8 @@ locals {
     azurerm_storage_account.sa_import_in_progress.id,
     azurerm_storage_account.sa_export_approved.id
   ]
+
+  servicebus_connection              = "SERVICEBUS_CONNECTION"
+  step_result_eventgrid_connection   = "EVENT_GRID_STEP_RESULT_CONNECTION"
+  data_deletion_eventgrid_connection = "EVENT_GRID_DATA_DELETION_CONNECTION"
 }

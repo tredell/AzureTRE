@@ -130,6 +130,13 @@ variable "arm_environment" {
   description = "Used as an environment variable in the VMSS to set the Azure cloud for Terraform"
 }
 
+variable "arm_use_msi" {
+  type        = bool
+  default     = false
+  description = "Used as an environment variable to determine if Terraform should use a managed identity"
+}
+
+
 variable "stateful_resources_locked" {
   type        = bool
   default     = true
@@ -161,13 +168,33 @@ variable "public_deployment_ip_address" {
   default     = ""
 }
 
-# Important note: it is NOT enough to simply enable the malware scanning on. Further, manual, steps are required
-# in order to actually set up the scanner. Setting this property to True without supplying a scanner will result
-# in airlock requests being stuck in the in-progress stage.
 variable "enable_airlock_malware_scanning" {
   type        = bool
   default     = false
   description = "If False, Airlock requests will skip the malware scanning stage"
+}
+
+variable "enable_airlock_email_check" {
+  type        = bool
+  default     = false
+  description = "If True, prior to airlock requests creation will check users have email addresses"
+}
+
+variable "firewall_sku" {
+  description = "Azure Firewall SKU"
+  type        = string
+  default     = ""
+}
+
+variable "app_gateway_sku" {
+  description = "Application Gateway SKU"
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = contains(["", "Standard_v2", "WAF_v2"], var.app_gateway_sku)
+    error_message = "Invalid app_gateway_sku value"
+  }
 }
 
 variable "rp_bundle_values" {
@@ -179,4 +206,92 @@ variable "rp_bundle_values" {
 variable "is_cosmos_defined_throughput" {
   type    = bool
   default = false
+}
+
+variable "kv_purge_protection_enabled" {
+  type        = bool
+  description = "A boolean indicating if the purge protection will be enabled on the core keyvault."
+  default     = true
+}
+
+variable "logging_level" {
+  type        = string
+  default     = "INFO"
+  description = "The logging level for the API and Resource Processor"
+  validation {
+    condition     = contains(["INFO", "DEBUG", "WARNING", "ERROR"], var.logging_level)
+    error_message = "logging_level must be one of ERROR, WARNING, INFO, DEBUG"
+  }
+}
+
+variable "enable_cmk_encryption" {
+  type        = bool
+  description = "A boolean indicating if customer managed keys will be used for encryption of supporting resources"
+  default     = false
+
+  validation {
+    condition = var.enable_cmk_encryption == false || (var.enable_cmk_encryption == true && (
+      (try(length(var.external_key_store_id), 0) > 0 && try(length(var.encryption_kv_name), 0) == 0) ||
+      (try(length(var.external_key_store_id), 0) == 0 && try(length(var.encryption_kv_name), 0) > 0)
+    ))
+    error_message = "Exactly one of 'external_key_store_id' or 'encryption_kv_name' must be non-empty when enable_cmk_encryption is true."
+  }
+}
+
+variable "external_key_store_id" {
+  type        = string
+  description = "ID of external Key Vault to store CMKs in (only required if enable_cmk_encryption is true)"
+  default     = ""
+}
+
+variable "encryption_kv_name" {
+  type        = string
+  description = "Name of Key Vault for encryption keys, required only if external_key_store_id is not set (only used if enable_cmk_encryption is true)"
+  default     = ""
+}
+
+variable "enable_dns_policy" {
+  type        = bool
+  description = "Whether, or not, to add a DNS security policy with an allow-list. This is a preview feature that can be enabled to prevent data exfiltration via DNS."
+  default     = false
+}
+
+variable "allowed_dns" {
+  type        = list(string)
+  description = "When DNS security policy is enabled this list of domains will be added to the allow list."
+  default     = []
+}
+
+variable "auto_grant_workspace_consent" {
+  type        = bool
+  description = "A boolean indicating if admin consent should be auto granted to the workspace"
+  default     = false
+}
+
+variable "user_management_enabled" {
+  type        = bool
+  description = "Is the Entra ID user management feature enabled (requires a workspace with Entra ID groups enabled, default to false)?"
+  default     = false
+}
+
+variable "deploy_bastion" {
+  type        = bool
+  description = "Deploy Azure Bastion"
+  default     = true
+}
+
+variable "bastion_sku" {
+  type        = string
+  description = "Azure Bastion SKU"
+  default     = "Basic"
+  validation {
+    condition     = contains(["Developer", "Basic", "Standard", "Premium"], var.bastion_sku)
+    error_message = "Invalid bastion_sku value"
+  }
+}
+
+variable "private_agent_subnet_id" {
+  description = "Subnet ID of the github runners"
+  type        = string
+  default     = ""
 }

@@ -2,19 +2,19 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "=3.37.0"
+      version = "=3.117.0"
     }
     azapi = {
       source  = "Azure/azapi"
-      version = "=1.1.0"
+      version = "= 2.3.0"
     }
     external = {
       source  = "hashicorp/external"
-      version = "=2.2.2"
+      version = "= 2.3.5"
     }
     random = {
       source  = "hashicorp/random"
-      version = "3.4.3"
+      version = "= 3.7.2"
     }
   }
 
@@ -36,6 +36,7 @@ provider "azurerm" {
       recover_soft_deleted_keys         = true
     }
   }
+  storage_use_azuread = true
 }
 
 provider "azapi" {}

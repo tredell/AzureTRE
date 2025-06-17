@@ -26,6 +26,14 @@ jq -r '
             "env_var": "KEYVAULT"
         },
         {
+            "path": "keyvault_uri",
+            "env_var": "KEYVAULT_URI"
+        },
+        {
+            "path": "keyvault_resource_id",
+            "env_var": "KEYVAULT_RESOURCE_ID"
+        },
+        {
             "path": "azure_tre_fqdn",
             "env_var": "FQDN"
         },
@@ -105,6 +113,10 @@ jq -r '
         {
             "path": "event_grid_airlock_notification_topic_resource_id",
             "env_var": "EVENT_GRID_AIRLOCK_NOTIFICATION_TOPIC_RESOURCE_ID"
+        },
+        {
+            "path": "airlock_malware_scan_result_topic_name",
+            "env_var": "AIRLOCK_MALWARE_SCAN_RESULT_TOPIC_NAME"
         }
     ]
         as $env_vars_to_extract

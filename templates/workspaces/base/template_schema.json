@@ -27,10 +27,22 @@
       "title": "App Service Plan SKU",
       "description": "The SKU that will be used when deploying an Azure App Service Plan.",
       "default": "P1v3",
+      "updateable": true,
       "enum": [
+        "P0v3",
         "P1v3",
         "P1v2",
         "S1"
+      ]
+    },
+    "storage_account_redundancy": {
+      "type": "string",
+      "title": "Storage Account Redundancy",
+      "description": "The redundancy option for the storage account in the workspace: GRS (Geo-Redundant Storage) or ZRS (Zone-Redundant Storage).",
+      "default": "GRS",
+      "enum": [
+        "GRS",
+        "ZRS"
       ]
     },
     "address_space_size": {
@@ -61,6 +73,13 @@
         "Manual"
       ],
       "updateable": true
+    },
+    "enable_dns_policy": {
+      "type": "boolean",
+      "title": "Enable DNS Security Policy",
+      "description": "Enable DNS Security Policy for the workspace.",
+      "default": false,
+      "updateable": true
     }
   },
   "allOf": [
@@ -81,7 +100,8 @@
             "type": "boolean",
             "title": "Configure Review VMs",
             "description": "Allow TRE to automatically create and delete review VMs for airlock approvals",
-            "default": false
+            "default": false,
+            "updateable": true
           }
         }
       }
@@ -108,6 +128,7 @@
             "title": "Airlock Review Config",
             "default": null,
             "description": "Configuration for Airlock Review feature. Needs to be set up after workspace creation",
+            "updateable": true,
             "properties": {
               "import": {
                 "title": "Import Review Settings",
@@ -206,13 +227,15 @@
           "client_id": {
             "type": "string",
             "title": "Application (Client) ID",
-            "description": "The AAD Application Registration ID for the workspace."
+            "description": "The AAD Application Registration ID for the workspace.",
+            "updateable": true
           },
           "client_secret": {
             "type": "string",
             "title": "Application (Client) Secret",
             "description": "The AAD Application Registration secret for the workspace. This value will be stored in the Workspace Key Vault.",
-            "sensitive": true
+            "sensitive": true,
+            "updateable": true
           }
         },
         "required": [
@@ -223,14 +246,16 @@
         "properties": {
           "create_aad_groups": {
             "type": "boolean",
-            "title": "Create AAD Groups for each workspace role",
+            "title": "Create AAD Groups for each workspace role (Required for user management)",
             "description": "Create AAD Groups for the workspace roles. If this is set to true, the workspace will create new AAD Groups.",
-            "default": false
+            "default": false,
+            "updateable": true
           },
           "aad_redirect_uris": {
             "type": "array",
             "title": "AAD Redirect URIs",
             "description": "Redirect URIs for the AAD app in Automatic Auth mode",
+            "updateable": true,
             "items": {
               "title": "items",
               "type": "object",
@@ -278,6 +303,7 @@
       "description",
       "overview",
       "shared_storage_quota",
+      "storage_account_redundancy",
       "app_service_plan_sku",
       "address_space_size",
       "address_space",

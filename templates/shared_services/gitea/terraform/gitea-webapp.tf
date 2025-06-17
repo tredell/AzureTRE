@@ -18,14 +18,16 @@ resource "azurerm_user_assigned_identity" "gitea_id" {
 }
 
 resource "azurerm_linux_web_app" "gitea" {
-  name                            = local.webapp_name
-  resource_group_name             = local.core_resource_group_name
-  location                        = data.azurerm_resource_group.rg.location
-  service_plan_id                 = data.azurerm_service_plan.core.id
-  https_only                      = true
-  key_vault_reference_identity_id = azurerm_user_assigned_identity.gitea_id.id
-  virtual_network_subnet_id       = data.azurerm_subnet.web_app.id
-  tags                            = local.tre_shared_service_tags
+  name                                           = local.webapp_name
+  resource_group_name                            = local.core_resource_group_name
+  location                                       = data.azurerm_resource_group.rg.location
+  service_plan_id                                = data.azurerm_service_plan.core.id
+  https_only                                     = true
+  key_vault_reference_identity_id                = azurerm_user_assigned_identity.gitea_id.id
+  virtual_network_subnet_id                      = data.azurerm_subnet.web_app.id
+  ftp_publish_basic_authentication_enabled       = false
+  webdeploy_publish_basic_authentication_enabled = false
+  tags                                           = local.tre_shared_service_tags
 
   app_settings = {
     WEBSITES_PORT                       = "3000"
@@ -46,9 +48,9 @@ resource "azurerm_linux_web_app" "gitea" {
 
     GITEA__database__SSL_MODE = "true"
     GITEA__database__DB_TYPE  = "mysql"
-    GITEA__database__HOST     = azurerm_mysql_server.gitea.fqdn
-    GITEA__database__NAME     = azurerm_mysql_database.gitea.name
-    GITEA__database__USER     = "${azurerm_mysql_server.gitea.administrator_login}@${azurerm_mysql_server.gitea.fqdn}"
+    GITEA__database__HOST     = azurerm_mysql_flexible_server.gitea.fqdn
+    GITEA__database__NAME     = azurerm_mysql_flexible_database.gitea.name
+    GITEA__database__USER     = azurerm_mysql_flexible_server.gitea.administrator_login
     GITEA__database__PASSWD   = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.db_password.id})"
   }
 
@@ -64,12 +66,12 @@ resource "azurerm_linux_web_app" "gitea" {
     container_registry_managed_identity_client_id = azurerm_user_assigned_identity.gitea_id.client_id
     ftps_state                                    = "Disabled"
     always_on                                     = true
-    minimum_tls_version                           = "1.2"
+    minimum_tls_version                           = "1.3"
     vnet_route_all_enabled                        = true
 
     application_stack {
-      docker_image     = "${data.azurerm_container_registry.mgmt_acr.login_server}/microsoft/azuretre/gitea"
-      docker_image_tag = local.version
+      docker_registry_url = "https://${data.azurerm_container_registry.mgmt_acr.login_server}"
+      docker_image_name   = "microsoft/azuretre/gitea:${local.version}"
     }
   }
 
@@ -100,6 +102,32 @@ resource "azurerm_linux_web_app" "gitea" {
   ]
 }
 
+resource "azapi_update_resource" "gitea_vnet_container_pull_routing" {
+  resource_id = azurerm_linux_web_app.gitea.id
+  type        = "Microsoft.Web/sites@2022-09-01"
+
+  body = jsonencode({
+    properties = {
+      vnetImagePullEnabled : true
+    }
+  })
+
+  depends_on = [
+    azurerm_linux_web_app.gitea
+  ]
+}
+
+resource "azapi_resource_action" "restart_gitea_webapp" {
+  type        = "Microsoft.Web/sites@2022-09-01"
+  resource_id = azurerm_linux_web_app.gitea.id
+  method      = "POST"
+  action      = "restart"
+
+  depends_on = [
+    azapi_update_resource.gitea_vnet_container_pull_routing
+  ]
+}
+
 resource "azurerm_private_endpoint" "gitea_private_endpoint" {
   name                = "pe-${local.webapp_name}"
   resource_group_name = local.core_resource_group_name
@@ -127,36 +155,27 @@ resource "azurerm_monitor_diagnostic_setting" "webapp_gitea" {
   target_resource_id         = azurerm_linux_web_app.gitea.id
   log_analytics_workspace_id = data.azurerm_log_analytics_workspace.tre.id
 
-  dynamic "log" {
-    for_each = data.azurerm_monitor_diagnostic_categories.webapp.log_category_types
+  dynamic "enabled_log" {
+    for_each = [
+      for category in data.azurerm_monitor_diagnostic_categories.webapp.log_category_types :
+      category if contains(local.webapp_diagnostic_categories_enabled, category)
+    ]
     content {
-      category = log.value
-      enabled  = contains(local.webapp_diagnostic_categories_enabled, log.value) ? true : false
+      category = enabled_log.value
 
-      retention_policy {
-        enabled = contains(local.webapp_diagnostic_categories_enabled, log.value) ? true : false
-        days    = 365
-      }
     }
   }
 
   metric {
     category = "AllMetrics"
     enabled  = true
-
-    retention_policy {
-      enabled = true
-      days    = 365
-    }
   }
 }
 
-resource "azurerm_key_vault_access_policy" "gitea_policy" {
-  key_vault_id = data.azurerm_key_vault.keyvault.id
-  tenant_id    = azurerm_user_assigned_identity.gitea_id.tenant_id
-  object_id    = azurerm_user_assigned_identity.gitea_id.principal_id
-
-  secret_permissions = ["Get", "List", ]
+resource "azurerm_role_assignment" "keyvault_gitea_role" {
+  scope                = data.azurerm_key_vault.keyvault.id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.gitea_id.principal_id
 }
 
 resource "azurerm_key_vault_secret" "gitea_password" {
@@ -166,8 +185,10 @@ resource "azurerm_key_vault_secret" "gitea_password" {
   tags         = local.tre_shared_service_tags
 
   depends_on = [
-    azurerm_key_vault_access_policy.gitea_policy
+    azurerm_role_assignment.keyvault_gitea_role
   ]
+
+  lifecycle { ignore_changes = [tags] }
 }
 
 resource "azurerm_storage_share" "gitea" {

@@ -1,7 +1,7 @@
 ---
 schemaVersion: 1.0.0
 name: tre-service-guacamole
-version: 0.9.2
+version: 0.13.0
 description: "An Azure TRE service for Guacamole"
 dockerfile: Dockerfile.tmpl
 registry: azuretre
@@ -53,7 +53,7 @@ parameters:
     description: "Guacamole disable paste configuration"
   - name: guac_enable_drive
     type: boolean
-    default: true
+    default: false
     env: GUAC_ENABLE_DRIVE
     description: "Guacamole enable drive configuration"
   - name: guac_drive_name
@@ -75,9 +75,14 @@ parameters:
     type: boolean
     default: true
     env: GUAC_DISABLE_UPLOAD
+  - name: guac_server_layout
+    type: string
+    default: ""
+    env: GUAC_SERVER_LAYOUT
+    description: "Guacamole server keyboard layout  (defaults to en-us-qwerty when not set)"
   - name: is_exposed_externally
     type: boolean
-    default: false
+    default: true
     env: IS_EXPOSED_EXTERNALLY
     description: "Determines if the web app will be available over public/internet or private networks"
   - name: aad_authority_url
@@ -107,22 +112,25 @@ parameters:
     type: string
 
 outputs:
-  - name: connection_uri
-    type: string
-    applyTo:
-      - install
   - name: authentication_callback_uri
     type: string
     applyTo:
       - install
+      - upgrade
   - name: web_apps_addresses
     type: string
     applyTo:
       - install
+      - upgrade
+  - name: admin_connection_uri
+    type: string
+    applyTo:
+      - install
+      - upgrade
 
 mixins:
   - terraform:
-      clientVersion: 1.4.6
+      clientVersion: 1.9.8
 
 install:
   - terraform:
@@ -141,19 +149,22 @@ install:
         guac_drive_path: ${ bundle.parameters.guac_drive_path }
         guac_disable_download: ${ bundle.parameters.guac_disable_download }
         guac_disable_upload: ${ bundle.parameters.guac_disable_upload }
+        guac_server_layout: ${ bundle.parameters.guac_server_layout }
         is_exposed_externally: ${ bundle.parameters.is_exposed_externally }
         tre_resource_id: ${ bundle.parameters.id }
         aad_authority_url: ${ bundle.parameters.aad_authority_url }
         arm_environment: ${ bundle.parameters.arm_environment }
       backendConfig:
+        use_azuread_auth: "true"
+        use_oidc: "true"
         resource_group_name: ${ bundle.parameters.tfstate_resource_group_name }
         storage_account_name: ${ bundle.parameters.tfstate_storage_account_name }
         container_name: ${ bundle.parameters.tfstate_container_name }
         key: tre-service-guacamole-${ bundle.parameters.id }
       outputs:
-        - name: connection_uri
         - name: authentication_callback_uri
         - name: web_apps_addresses
+        - name: admin_connection_uri
 
 upgrade:
   - terraform:
@@ -172,19 +183,22 @@ upgrade:
         guac_drive_path: ${ bundle.parameters.guac_drive_path }
         guac_disable_download: ${ bundle.parameters.guac_disable_download }
         guac_disable_upload: ${ bundle.parameters.guac_disable_upload }
+        guac_server_layout: ${ bundle.parameters.guac_server_layout }
         is_exposed_externally: ${ bundle.parameters.is_exposed_externally }
         tre_resource_id: ${ bundle.parameters.id }
         aad_authority_url: ${ bundle.parameters.aad_authority_url }
         arm_environment: ${ bundle.parameters.arm_environment }
       backendConfig:
+        use_azuread_auth: "true"
+        use_oidc: "true"
         resource_group_name: ${ bundle.parameters.tfstate_resource_group_name }
         storage_account_name: ${ bundle.parameters.tfstate_storage_account_name }
         container_name: ${ bundle.parameters.tfstate_container_name }
         key: tre-service-guacamole-${ bundle.parameters.id }
       outputs:
-        - name: connection_uri
         - name: authentication_callback_uri
         - name: web_apps_addresses
+        - name: admin_connection_uri
 
 uninstall:
   - terraform:
@@ -203,11 +217,14 @@ uninstall:
         guac_drive_path: ${ bundle.parameters.guac_drive_path }
         guac_disable_download: ${ bundle.parameters.guac_disable_download }
         guac_disable_upload: ${ bundle.parameters.guac_disable_upload }
+        guac_server_layout: ${ bundle.parameters.guac_server_layout }
         is_exposed_externally: ${ bundle.parameters.is_exposed_externally }
         tre_resource_id: ${ bundle.parameters.id }
         aad_authority_url: ${ bundle.parameters.aad_authority_url }
         arm_environment: ${ bundle.parameters.arm_environment }
       backendConfig:
+        use_azuread_auth: "true"
+        use_oidc: "true"
         resource_group_name: ${ bundle.parameters.tfstate_resource_group_name }
         storage_account_name: ${ bundle.parameters.tfstate_storage_account_name }
         container_name: ${ bundle.parameters.tfstate_container_name }

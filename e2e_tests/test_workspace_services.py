@@ -5,15 +5,16 @@ from helpers import check_aad_auth_redirect
 from resources.resource import get_resource, post_resource
 from resources import strings
 
-pytestmark = pytest.mark.asyncio
+pytestmark = pytest.mark.asyncio(loop_scope="session")
 
 workspace_services = [
     strings.AZUREML_SERVICE,
-    # strings.INNEREYE_SERVICE,
     strings.GITEA_SERVICE,
     strings.MLFLOW_SERVICE,
     strings.MYSQL_SERVICE,
     strings.HEALTH_SERVICE,
+    strings.AZURESQL_SERVICE,
+    strings.OPENAI_SERVICE
 ]
 
 
@@ -30,7 +31,8 @@ async def test_create_guacamole_service_into_base_workspace(setup_test_workspace
         "properties": {
             "display_name": "My VM",
             "description": "Will be using this VM for my research",
-            "os_image": "Windows 10"
+            "os_image": "Windows 10",
+            "admin_username": "researcher"
         }
     }
 
@@ -59,7 +61,7 @@ async def test_create_guacamole_service_into_aad_workspace(setup_test_aad_worksp
 
 async def ping_guacamole_workspace_service(workspace_service_path, access_token, verify) -> None:
     workspace_service = await get_resource(f"/api{workspace_service_path}", access_token, verify)
-    endpoint = workspace_service["workspaceService"]["properties"]["connection_uri"]
+    endpoint = workspace_service["workspaceService"]["properties"]["admin_connection_uri"]
     await check_aad_auth_redirect(endpoint, verify)
 
 
